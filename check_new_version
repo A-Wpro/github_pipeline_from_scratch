@@ -1,0 +1,80 @@
+import subprocess
+import requests
+import datetime as dt
+import json
+import os
+import time
+import pycurl
+import pandas as pd
+import pycurl
+from io import BytesIO
+
+
+project = "Value_Tracking_DLAB"
+components = ["Value_Tracking_DLAB"]
+Branch = "Prod"
+PROXY = ""
+YOURNAME = ""
+url = f"https://api.github.com/repos/{YOURNAME}/{project}/branches"
+TOKEN = ""
+for component in components:
+
+
+    buffer = BytesIO()
+    c = pycurl.Curl()
+    c.setopt(pycurl.PROXY, PROXY)
+    c.setopt(pycurl.HTTPHEADER, ["Accept: application/vnd.github+json"])
+    c.setopt(pycurl.HTTPHEADER, ["Authorization: Bearer TOKEN"])
+    c.setopt(c.URL, url)
+    c.setopt(c.WRITEDATA, buffer)
+    c.perform()
+    c.close()
+
+   
+    response = buffer.getvalue().decode("UTF-8")
+    response = json.loads(response)
+
+    # Get the latest commit SHA from the response
+    for name in range(len(response[1])):
+        if response[name]["name"] == "Prod":
+            latest_commit_sha = response[1]["commit"]["sha"]
+            break
+        else:
+            latest_commit_sha = ""
+    os.chdir("D:\\APPS\\VALUE_TRACKING")
+
+    # Compare the latest commit SHA to a previous commit SHA to see if the branch has been updated
+    with open(f"previous_commit\\previous_commit_sha_{component}.txt") as f:
+
+        lines = f.readlines()
+        if lines:
+            previous_commit_sha = lines[0].strip()
+        else:
+            previous_commit_sha = ""
+        f.close()
+    if latest_commit_sha != previous_commit_sha:
+        print("There is a new version of the branch.")
+
+        # The URL of the GitHub repository to clone
+        repo_url = f"https://{TOKEN}github.com/{YOURNAME}/{project}.git"
+        #os.environ["GIT_AUTHORIZATION_TOKEN"] = TOKEN
+        # The local directory where the repository will be cloned
+        local_directory = component
+
+        # check if the local_directory exists
+        if not os.path.exists(local_directory):
+            # clone the repository
+            subprocess.run(["git", "clone", repo_url, local_directory])
+            time.sleep(10)
+            os.chdir(local_directory)
+            subprocess.run(["git", "checkout", Branch])
+        else:
+            os.chdir(local_directory)
+            subprocess.run(["git", "pull"])
+            
+        os.chdir("..")
+        with open(f"previous_commit\\previous_commit_sha_{component}.txt", "w") as f:
+            f.write(latest_commit_sha)
+
+    else:
+        print("The branch has not been updated.")
